@@ -249,7 +249,7 @@
 
   function render(){
     root.innerHTML=`
-      <div class="cf-head"><h1>법인 운영 Cashflow</h1><span class="sub">12개월 현금흐름 전망 · 현금주의</span>
+      <div class="cf-head"><h1>TWOHANDS Cashflow</h1><span class="sub">12개월 현금흐름 전망 · 현금주의</span>
         <span class="sub" id="syncBadge" style="margin-left:auto"></span></div>
       <div class="cf-tabs">${TABS.map(([k,l])=>`<button class="cf-tab ${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
       <div class="cf-body" id="tabBody"></div>`;
