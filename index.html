@@ -16,20 +16,21 @@
     --mono:'SF Mono',Consolas,'Malgun Gothic',monospace;
   }
   #cfApp{font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
-    color:var(--ink); background:var(--paper); min-height:100vh; font-size:14px; line-height:1.5;}
+    color:var(--ink); background:var(--paper); min-height:100vh;
+    font-size:clamp(13px, 0.55vw + 11px, 16px); line-height:1.5;}
   #cfApp *{box-sizing:border-box;}
   .cf-head{background:var(--ink); color:#fff; padding:14px 20px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
-  .cf-head h1{margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em;}
+  .cf-head h1{margin:0; font-size:clamp(15px, 1.1vw + 11px, 20px); font-weight:700; letter-spacing:-.02em;}
   .cf-head .sub{font-size:12px; color:#9FB0C8;}
   .cf-tabs{display:flex; gap:2px; background:var(--ink); padding:0 12px; overflow-x:auto;}
   .cf-tab{background:transparent; border:none; color:#9FB0C8; padding:10px 16px; font-size:13.5px; font-weight:600;
     cursor:pointer; border-radius:8px 8px 0 0; white-space:nowrap; font-family:inherit;}
   .cf-tab.on{background:var(--paper); color:var(--ink);}
-  .cf-body{padding:18px 20px 60px; max-width:1280px; margin:0 auto;}
+  .cf-body{padding:clamp(12px,1.4vw,24px) clamp(10px,2vw,28px) 60px; width:100%; max-width:min(96vw,1600px); margin:0 auto;}
   .cf-card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:16px;}
   .cf-card h2{margin:0 0 4px; font-size:15px; font-weight:700;}
   .cf-note{font-size:12px; color:var(--ink2); margin:0 0 12px;}
-  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:16px;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(clamp(130px,14vw,180px),1fr)); gap:10px; margin-bottom:16px;}
   .kpi{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px;}
   .kpi .k{font-size:11.5px; color:var(--ink2); margin-bottom:4px;}
   .kpi .v{font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
@@ -73,7 +74,31 @@
     padding:9px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:99;}
   .toast.show{opacity:1;}
   .file-tag{font-size:11px; color:var(--ink2); background:#EDF1F7; border-radius:5px; padding:2px 7px; font-family:var(--mono);}
-  @media (max-width:640px){ .cf-body{padding:12px 10px 60px;} .kpi .v{font-size:15px;} }
+  /* 태블릿 이하 */
+  @media (max-width:820px){
+    .cf-tab{padding:9px 12px;}
+    .toolbar{gap:6px;}
+    .toolbar select,.toolbar input{flex:1 1 45%;}
+  }
+  /* 휴대폰 */
+  @media (max-width:560px){
+    .cf-head{padding:11px 14px;}
+    .cf-tabs{padding:0 6px;}
+    .cf-tab{padding:8px 10px; font-size:13px;}
+    .cf-card{padding:13px 13px;}
+    .kpis{grid-template-columns:repeat(2,1fr); gap:8px;}
+    .kpi .v{font-size:15px;}
+    .form-grid{grid-template-columns:1fr 1fr;}
+    .btns{width:100%;}
+    .btns .btn{flex:1 1 auto;}
+    .toolbar select,.toolbar input{flex:1 1 100%;}
+    #syncBadge{width:100%; margin-left:0 !important;}
+  }
+  /* 아주 좁은 화면 */
+  @media (max-width:380px){
+    .kpis{grid-template-columns:1fr;}
+    .form-grid{grid-template-columns:1fr;}
+  }
 </style>
 <div class="toast" id="toast"></div>
 <script>
@@ -292,7 +317,7 @@
       pts+=`<circle cx="${cx}" cy="${cy}" r="3.2" fill="#2B5FAD"></circle>`;
       labels+=`<text x="${cx}" y="${H-10}" font-size="10" fill="#4A5A72" text-anchor="middle">${m.slice(2)}</text>`;
     });
-    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:720px" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="현금흐름 차트">
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:min(720px,140vw)" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="현금흐름 차트">
       <line x1="${pad.l}" x2="${W-pad.r}" y1="${y(0)}" y2="${y(0)}" stroke="#C9D2DF"></line>
       <line x1="${pad.l}" x2="${W-pad.r}" y1="${y(cf.buffer)}" y2="${y(cf.buffer)}" stroke="#D64545" stroke-dasharray="5 4" opacity="0.6"></line>
       <text x="${W-pad.r+4}" y="${y(cf.buffer)+4}" font-size="10" fill="#D64545">버퍼</text>
