@@ -146,13 +146,55 @@
   }
   function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
 
-  async function loadFile(key, fallback){
+  // ===== 저장: 로컬 캐시 + Google Sheets(Apps Script) 동기화 =====
+  const GAS_KEY='cashflow_gas_url';
+  let gasUrl=(function(){ try{return localStorage.getItem(GAS_KEY)||'';}catch(e){return '';} })();
+  let syncState=gasUrl?'syncing':'local';
+
+  function loadLocal(key, fallback){
     try{ const v=localStorage.getItem(FILES[key]); return v?JSON.parse(v):fallback; }
     catch(e){ return fallback; }
   }
+  function saveLocal(key){
+    try{ localStorage.setItem(FILES[key], JSON.stringify(db[key])); }catch(e){}
+  }
   async function saveFile(key){
-    try{ localStorage.setItem(FILES[key], JSON.stringify(db[key])); }
-    catch(e){ console.error(e); toast('저장 실패: '+key); }
+    saveLocal(key);
+    if(!gasUrl) return;
+    syncState='syncing'; updSync();
+    try{
+      const res=await fetch(gasUrl,{method:'POST',redirect:'follow',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({key:key,data:db[key]})});
+      const j=await res.json();
+      if(j.status!=='ok') throw new Error(j.message||'sync');
+      syncState='ok';
+    }catch(e){ syncState='err'; toast('시트 동기화 실패 — 로컬에만 저장됨'); }
+    updSync();
+  }
+  async function pushAll(){
+    const res=await fetch(gasUrl,{method:'POST',redirect:'follow',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({all:db})});
+    const j=await res.json();
+    if(j.status!=='ok') throw new Error('push');
+  }
+  async function pullRemote(){
+    const res=await fetch(gasUrl,{redirect:'follow'});
+    const j=await res.json();
+    if(!j || !j.settings) throw new Error('bad response');
+    const empty=!j._hasSettings && !(j.transactions||[]).length && !(j.recurring||[]).length && !(j.debtinvest||[]).length;
+    if(empty) return false; // 새 시트: 아직 데이터 없음
+    db.settings=j.settings; db.transactions=j.transactions||[];
+    db.recurring=j.recurring||[]; db.debtinvest=j.debtinvest||[];
+    Object.keys(FILES).forEach(saveLocal);
+    return true;
+  }
+  function updSync(){
+    const b=document.getElementById('syncBadge'); if(!b) return;
+    const map={ ok:['● Google Sheets 연동됨','#7FD8AF'], syncing:['● 동기화 중…','#F0C674'],
+      err:['● 동기화 오류 — 로컬 저장','#FF9B9B'], local:['● 로컬 저장 전용','#9FB0C8'] };
+    b.textContent=map[syncState][0]; b.style.color=map[syncState][1];
   }
 
   // ===== 현금흐름 집계 =====
@@ -206,7 +248,8 @@
 
   function render(){
     root.innerHTML=`
-      <div class="cf-head"><h1>법인 운영 Cashflow</h1><span class="sub">12개월 현금흐름 전망 · 현금주의</span></div>
+      <div class="cf-head"><h1>법인 운영 Cashflow</h1><span class="sub">12개월 현금흐름 전망 · 현금주의</span>
+        <span class="sub" id="syncBadge" style="margin-left:auto"></span></div>
       <div class="cf-tabs">${TABS.map(([k,l])=>`<button class="cf-tab ${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
       <div class="cf-body" id="tabBody"></div>`;
     root.querySelectorAll('.cf-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; render(); });
@@ -217,6 +260,7 @@
     else if(tab==='recurring') renderRecurring(body);
     else if(tab==='debtinvest') renderDebtInvest(body);
     else renderSettings(body);
+    updSync();
   }
 
   function renderDashboard(el){
@@ -519,6 +563,20 @@
         <div class="btns"><button class="btn btn-p" id="stSave">설정 저장</button></div>
       </div>
       <div class="cf-card">
+        <h2>Google Sheets 연동</h2>
+        <p class="cf-note">구글 시트에 붙인 Apps Script 웹 앱 URL(…/exec)을 입력하면, 모든 입력·수정이 시트에 실시간 저장되고 어느 기기에서 접속해도 같은 데이터가 표시됩니다. 설정 방법은 저장소의 README를 참고하세요.</p>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="fld"><label>Apps Script 웹 앱 URL</label>
+            <input id="st_gasUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(gasUrl)}"></div>
+        </div>
+        <div class="btns">
+          <button class="btn btn-p" id="gasConnect">연결 저장 &amp; 시트에서 불러오기</button>
+          <button class="btn btn-g" id="gasPush">현재 데이터를 시트로 전체 업로드</button>
+          <button class="btn btn-g" id="gasPull">시트에서 다시 불러오기</button>
+          <button class="btn btn-d" id="gasOff">연동 해제</button>
+        </div>
+      </div>
+      <div class="cf-card">
         <h2>데이터 파일 관리</h2>
         <p class="cf-note">각 시트는 별도 파일로 저장·관리됩니다. JSON으로 내려받아 백업하거나, 백업 파일을 불러올 수 있습니다.</p>
         <div class="btns" style="margin-bottom:10px">
@@ -536,6 +594,39 @@
         minBuffer:Number(el.querySelector('#st_minBuffer').value)||0,
         taxMemo:el.querySelector('#st_taxMemo').value, basis:el.querySelector('#st_basis').value };
       await saveFile('settings'); toast('설정을 저장했습니다'); render();
+    };
+    el.querySelector('#gasConnect').onclick=async()=>{
+      const url=el.querySelector('#st_gasUrl').value.trim();
+      if(!url){ toast('URL을 입력하세요'); return; }
+      gasUrl=url; try{ localStorage.setItem(GAS_KEY,url); }catch(e){}
+      syncState='syncing'; updSync(); toast('시트에 연결 중…');
+      try{
+        const had=await pullRemote();
+        if(!had){ await pushAll(); toast('빈 시트입니다 — 현재 데이터를 시트에 업로드했습니다'); }
+        else toast('시트 데이터를 불러왔습니다');
+        syncState='ok';
+      }catch(e){ syncState='err'; toast('연결 실패 — URL과 배포 설정(액세스: 모든 사용자)을 확인하세요'); }
+      render();
+    };
+    el.querySelector('#gasPush').onclick=async()=>{
+      if(!gasUrl){ toast('먼저 URL을 연결하세요'); return; }
+      if(!confirm('시트의 기존 내용을 현재 앱 데이터로 덮어씁니다. 계속할까요?')) return;
+      syncState='syncing'; updSync();
+      try{ await pushAll(); syncState='ok'; toast('시트로 업로드 완료'); }
+      catch(e){ syncState='err'; toast('업로드 실패'); }
+      updSync();
+    };
+    el.querySelector('#gasPull').onclick=async()=>{
+      if(!gasUrl){ toast('먼저 URL을 연결하세요'); return; }
+      if(!confirm('앱의 현재 데이터를 시트 내용으로 덮어씁니다. 계속할까요?')) return;
+      syncState='syncing'; updSync();
+      try{ await pullRemote(); syncState='ok'; toast('시트에서 불러왔습니다'); }
+      catch(e){ syncState='err'; toast('불러오기 실패'); }
+      render();
+    };
+    el.querySelector('#gasOff').onclick=()=>{
+      gasUrl=''; try{ localStorage.removeItem(GAS_KEY); }catch(e){}
+      syncState='local'; toast('연동을 해제했습니다 (데이터는 이 브라우저에만 저장)'); render();
     };
     el.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>downloadJson(FILES[b.dataset.exp], db[b.dataset.exp]));
     el.querySelector('#expAll').onclick=()=>downloadJson('cashflow_backup_all.json', db);
@@ -585,16 +676,23 @@
   // ===== 시작 =====
   (async function init(){
     root.innerHTML='<div class="empty">데이터를 불러오는 중…</div>';
-    db.settings    = await loadFile('settings', null);
-    db.transactions= await loadFile('transactions', null);
-    db.recurring   = await loadFile('recurring', null);
-    db.debtinvest  = await loadFile('debtinvest', null);
+    db.settings    = loadLocal('settings', null);
+    db.transactions= loadLocal('transactions', null);
+    db.recurring   = loadLocal('recurring', null);
+    db.debtinvest  = loadLocal('debtinvest', null);
     let seeded=false;
     if(!db.settings){ db.settings=JSON.parse(JSON.stringify(SEED.settings)); seeded=true; }
     if(!db.transactions){ db.transactions=JSON.parse(JSON.stringify(SEED.transactions)); seeded=true; }
     if(!db.recurring){ db.recurring=JSON.parse(JSON.stringify(SEED.recurring)); seeded=true; }
     if(!db.debtinvest){ db.debtinvest=JSON.parse(JSON.stringify(SEED.debtinvest)); seeded=true; }
-    if(seeded) for(const k of Object.keys(FILES)) await saveFile(k);
+    if(seeded) Object.keys(FILES).forEach(saveLocal);
+    if(gasUrl){
+      try{
+        const had=await pullRemote();
+        if(!had) await pushAll(); // 빈 시트면 로컬 데이터를 올려 초기화
+        syncState='ok';
+      }catch(e){ syncState='err'; toast('시트 연결 실패 — 로컬 데이터를 표시합니다'); }
+    }
     render();
   })();
 })();
