@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>법인 운영 Cashflow</title>
+</head>
+<body style="margin:0">
+<div id="cfApp"></div>
+<style>
+  :root{
+    --ink:#1B2B44; --ink2:#4A5A72; --paper:#F5F7FA; --card:#FFFFFF;
+    --line:#E1E6EE; --line2:#C9D2DF;
+    --in:#0E8A5F; --out:#D64545; --accent:#2B5FAD; --accent-soft:#EAF1FB;
+    --warn-bg:#FDECEC; --ok-bg:#E9F6F0;
+    --mono:'SF Mono',Consolas,'Malgun Gothic',monospace;
+  }
+  #cfApp{font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    color:var(--ink); background:var(--paper); min-height:100vh; font-size:14px; line-height:1.5;}
+  #cfApp *{box-sizing:border-box;}
+  .cf-head{background:var(--ink); color:#fff; padding:14px 20px; display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
+  .cf-head h1{margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em;}
+  .cf-head .sub{font-size:12px; color:#9FB0C8;}
+  .cf-tabs{display:flex; gap:2px; background:var(--ink); padding:0 12px; overflow-x:auto;}
+  .cf-tab{background:transparent; border:none; color:#9FB0C8; padding:10px 16px; font-size:13.5px; font-weight:600;
+    cursor:pointer; border-radius:8px 8px 0 0; white-space:nowrap; font-family:inherit;}
+  .cf-tab.on{background:var(--paper); color:var(--ink);}
+  .cf-body{padding:18px 20px 60px; max-width:1280px; margin:0 auto;}
+  .cf-card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:16px;}
+  .cf-card h2{margin:0 0 4px; font-size:15px; font-weight:700;}
+  .cf-note{font-size:12px; color:var(--ink2); margin:0 0 12px;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:16px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px;}
+  .kpi .k{font-size:11.5px; color:var(--ink2); margin-bottom:4px;}
+  .kpi .v{font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
+  .kpi .v.neg{color:var(--out);} .kpi .v.pos{color:var(--in);}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px;}
+  table.cf{border-collapse:collapse; width:100%; font-size:13px;}
+  table.cf th{background:#EDF1F7; color:var(--ink2); font-weight:700; font-size:12px; padding:7px 10px;
+    border-bottom:1px solid var(--line2); text-align:left; white-space:nowrap; position:sticky; top:0;}
+  table.cf td{padding:6px 10px; border-bottom:1px solid var(--line); white-space:nowrap; vertical-align:middle;}
+  table.cf tr:last-child td{border-bottom:none;}
+  td.num,th.num{text-align:right; font-variant-numeric:tabular-nums;}
+  .neg{color:var(--out);} .pos{color:var(--in);}
+  .row-sec td{background:#F0F4FA; font-weight:800; color:var(--ink);}
+  .row-sum td{background:#FBFCFE; font-weight:700; border-top:1px solid var(--line2);}
+  .row-final td{background:var(--ink); color:#fff; font-weight:800;}
+  .row-final td.neg{color:#FF9B9B;}
+  .sticky-col{position:sticky; left:0; background:inherit; z-index:1;}
+  table.cf td.sticky-col{background:#fff;} table.cf .row-sec td.sticky-col{background:#F0F4FA;}
+  table.cf .row-sum td.sticky-col{background:#FBFCFE;} table.cf .row-final td.sticky-col{background:var(--ink);}
+  .badge{display:inline-block; padding:1px 8px; border-radius:20px; font-size:11.5px; font-weight:700;}
+  .b-ok{background:var(--ok-bg); color:var(--in);} .b-warn{background:var(--warn-bg); color:var(--out);}
+  .b-hold{background:#F1F1F4; color:#7A7A88;} .b-plan{background:var(--accent-soft); color:var(--accent);}
+  .b-done{background:#EDEAF9; color:#5B4CB3;}
+  .form-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px 12px; margin-bottom:12px;}
+  .fld label{display:block; font-size:11.5px; color:var(--ink2); font-weight:700; margin-bottom:3px;}
+  .fld input,.fld select,.fld textarea{width:100%; padding:7px 9px; border:1px solid var(--line2); border-radius:7px;
+    font-size:13px; font-family:inherit; background:#fff; color:var(--ink);}
+  .fld input:focus,.fld select:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent);}
+  .fld input[readonly]{background:#F2F4F8; color:var(--ink2);}
+  .btns{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .btn{border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .btn-p{background:var(--accent); color:#fff;} .btn-p:hover{background:#234E90;}
+  .btn-g{background:#EDF1F7; color:var(--ink);} .btn-g:hover{background:#E1E7F0;}
+  .btn-d{background:var(--warn-bg); color:var(--out);}
+  .btn-xs{padding:3px 9px; font-size:12px; border-radius:6px;}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;}
+  .toolbar select,.toolbar input{padding:6px 9px; border:1px solid var(--line2); border-radius:7px; font-size:13px; font-family:inherit;}
+  .empty{padding:30px; text-align:center; color:var(--ink2); font-size:13px;}
+  .chart-wrap{overflow-x:auto;}
+  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+    padding:9px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:99;}
+  .toast.show{opacity:1;}
+  .file-tag{font-size:11px; color:var(--ink2); background:#EDF1F7; border-radius:5px; padding:2px 7px; font-family:var(--mono);}
+  @media (max-width:640px){ .cf-body{padding:12px 10px 60px;} .kpi .v{font-size:15px;} }
+</style>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+  // ===== 데이터 저장: 데이터셋별 별도 파일(키) 관리 =====
+  const FILES = {
+    settings:    'cashflow_settings.json',
+    transactions:'cashflow_transactions.json',
+    recurring:   'cashflow_recurring.json',
+    debtinvest:  'cashflow_debtinvest.json'
+  };
+  const INCOME_CATS  = ['매출 수금','기타 영업수입'];
+  const EXPENSE_CATS = ['매입/외주비','급여/4대보험','임차료','마케팅','일반관리비','세금/부가세','기타 영업지출'];
+  const INVEST_CATS  = ['CapEx/자산구입','투자/보증금'];
+  const FINANCE_CATS = ['대출 실행','원금 상환','이자 지급','증자/출자'];
+  const DI_CATS = INVEST_CATS.concat(FINANCE_CATS);
+  const DI_INFLOW = {'대출 실행':1,'증자/출자':1};
+
+  let db = { settings:null, transactions:[], recurring:[], debtinvest:[] };
+  let tab = 'dashboard';
+  let editId = { transactions:null, recurring:null, debtinvest:null };
+  let txFilter = { month:'', type:'', status:'', text:'' };
+
+  const SEED = {
+    settings: { startMonth:'2026-08', openingCash:1000000, minBuffer:10000000,
+      taxMemo:'예: 1,4,7,10월 부가세 / 3월 법인세', basis:'현금주의' },
+    transactions: [
+      {id:uid(),date:'2026-08-01',actual:'',type:'수입',cat:'매출 수금',item:'AX 선수금',party:'엠로',supply:42000000,vat:4200000,status:'예정',pay:'계좌이체',memo:''},
+      {id:uid(),date:'2026-08-15',actual:'',type:'지출',cat:'일반관리비',item:'핸드폰 구입',party:'애플',supply:1380909,vat:138090.9,status:'예정',pay:'카드',memo:''},
+      {id:uid(),date:'2026-08-25',actual:'',type:'지출',cat:'일반관리비',item:'법인설립비용',party:'자비스',supply:368000,vat:36800,status:'예정',pay:'계좌이체',memo:''},
+      {id:uid(),date:'2026-10-25',actual:'',type:'지출',cat:'세금/부가세',item:'3분기 부가가치세',party:'세무서',supply:4000000,vat:0,status:'예정',pay:'계좌이체',memo:''},
+      {id:uid(),date:'2026-12-31',actual:'',type:'수입',cat:'매출 수금',item:'AX 중도금',party:'엠로',supply:56000000,vat:5600000,status:'예정',pay:'계좌이체',memo:''},
+      {id:uid(),date:'2027-03-31',actual:'',type:'지출',cat:'세금/부가세',item:'2026 법인세',party:'세무서',supply:9800000,vat:980000,status:'예정',pay:'계좌이체',memo:''},
+      {id:uid(),date:'2027-05-31',actual:'',type:'수입',cat:'매출 수금',item:'AX 잔금',party:'엠로',supply:42000000,vat:4200000,status:'예정',pay:'계좌이체',memo:''}
+    ],
+    recurring: [
+      {id:uid(),cat:'급여/4대보험',name:'임직원 급여',party:'임직원',start:'2026-01-01',end:'2026-12-31',amount:1000000,vatIncl:'N',payday:'매월 25일',status:'중지',memo:''},
+      {id:uid(),cat:'일반관리비',name:'차량 리스',party:'임대인',start:'2026-08-01',end:'2030-07-31',amount:748600,vatIncl:'Y',payday:'매월 말일',status:'중지',memo:'M3 Long : 748,600 / Y : 616,900'},
+      {id:uid(),cat:'일반관리비',name:'Claude 사용료',party:'Anthropic',start:'2026-08-25',end:'2027-12-31',amount:30400,vatIncl:'N',payday:'매월 10일',status:'활성',memo:''},
+      {id:uid(),cat:'일반관리비',name:'세무비용',party:'자비스',start:'2026-08-25',end:'2027-12-31',amount:88000,vatIncl:'Y',payday:'매월 25일',status:'활성',memo:''}
+    ],
+    debtinvest: [
+      {id:uid(),date:'2026-03-15',cat:'대출 실행',item:'운전자금 대출',party:'은행',amount:50000000,status:'보류',asset:'대출A',proof:'',memo:'예시'},
+      {id:uid(),date:'2026-04-30',cat:'CapEx/자산구입',item:'장비 구입',party:'공급사',amount:20000000,status:'보류',asset:'장비A',proof:'',memo:'예시'},
+      {id:uid(),date:'2026-06-30',cat:'원금 상환',item:'대출A 원금',party:'은행',amount:10000000,status:'보류',asset:'대출A',proof:'',memo:'예시'},
+      {id:uid(),date:'2026-06-30',cat:'이자 지급',item:'대출A 이자',party:'은행',amount:1200000,status:'보류',asset:'대출A',proof:'',memo:'예시'},
+      {id:uid(),date:'2026-08-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
+      {id:uid(),date:'2026-09-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
+      {id:uid(),date:'2026-10-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
+      {id:uid(),date:'2026-11-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
+      {id:uid(),date:'2026-12-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''}
+    ]
+  };
+
+  function uid(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function fmt(n){
+    if(n===null||n===undefined||isNaN(n)) return '';
+    const v=Math.round(n*10)/10;
+    const s=Math.abs(v).toLocaleString('ko-KR');
+    return v<0 ? '('+s+')' : s;
+  }
+  function cls(n){ return n<0?'num neg':(n>0?'num pos':'num'); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function ym(dateStr){ return dateStr ? dateStr.slice(0,7) : ''; }
+  function monthList(){
+    const [y,m]=(db.settings.startMonth||'2026-08').split('-').map(Number);
+    const arr=[];
+    for(let i=0;i<12;i++){ const d=new Date(y,m-1+i,1); arr.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+    return arr;
+  }
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1800); }
+
+  async function loadFile(key, fallback){
+    try{ const v=localStorage.getItem(FILES[key]); return v?JSON.parse(v):fallback; }
+    catch(e){ return fallback; }
+  }
+  async function saveFile(key){
+    try{ localStorage.setItem(FILES[key], JSON.stringify(db[key])); }
+    catch(e){ console.error(e); toast('저장 실패: '+key); }
+  }
+
+  // ===== 현금흐름 집계 =====
+  function computeCashflow(){
+    const months=monthList();
+    const idx=Object.fromEntries(months.map((m,i)=>[m,i]));
+    const zero=()=>months.map(()=>0);
+    const inc={}, exp={}, inv={}, fin={};
+    INCOME_CATS.forEach(c=>inc[c]=zero());
+    EXPENSE_CATS.forEach(c=>exp[c]=zero());
+    INVEST_CATS.forEach(c=>inv[c]=zero());
+    FINANCE_CATS.forEach(c=>fin[c]=zero());
+
+    db.transactions.forEach(t=>{
+      if(t.status==='보류') return;
+      const m=ym(t.actual||t.date); if(!(m in idx)) return;
+      const amt=(Number(t.supply)||0)+(Number(t.vat)||0);
+      if(t.type==='수입' && inc[t.cat]) inc[t.cat][idx[m]]+=amt;
+      else if(t.type==='지출' && exp[t.cat]) exp[t.cat][idx[m]]-=amt;
+    });
+    db.recurring.forEach(r=>{
+      if(r.status!=='활성') return;
+      const s=ym(r.start), e=ym(r.end)||'9999-12';
+      months.forEach((m,i)=>{
+        if(m>=s && m<=e && exp[r.cat]) exp[r.cat][i]-=(Number(r.amount)||0);
+      });
+    });
+    db.debtinvest.forEach(d=>{
+      if(d.status==='보류') return;
+      const m=ym(d.date); if(!(m in idx)) return;
+      const sign=DI_INFLOW[d.cat]?1:-1;
+      const amt=sign*(Number(d.amount)||0);
+      if(inv[d.cat]) inv[d.cat][idx[m]]+=amt;
+      else if(fin[d.cat]) fin[d.cat][idx[m]]+=amt;
+    });
+
+    const sum=obj=>months.map((_,i)=>Object.values(obj).reduce((a,arr)=>a+arr[i],0));
+    const incSum=sum(inc), expSum=sum(exp), invSum=sum(inv), finSum=sum(fin);
+    const net=months.map((_,i)=>incSum[i]+expSum[i]+invSum[i]+finSum[i]);
+    const open=[], close=[];
+    let c=Number(db.settings.openingCash)||0;
+    months.forEach((_,i)=>{ open.push(c); c+=net[i]; close.push(c); });
+    return { months, inc, exp, inv, fin, incSum, expSum, invSum, finSum, net, open, close,
+      buffer:Number(db.settings.minBuffer)||0 };
+  }
+
+  // ===== 렌더링 =====
+  const root=document.getElementById('cfApp');
+  const TABS=[['dashboard','Dashboard'],['cashflow','Cashflow'],['transactions','Transactions'],
+    ['recurring','Recurring'],['debtinvest','DebtInvest'],['settings','Settings']];
+
+  function render(){
+    root.innerHTML=`
+      <div class="cf-head"><h1>법인 운영 Cashflow</h1><span class="sub">12개월 현금흐름 전망 · 현금주의</span></div>
+      <div class="cf-tabs">${TABS.map(([k,l])=>`<button class="cf-tab ${tab===k?'on':''}" data-tab="${k}">${l}</button>`).join('')}</div>
+      <div class="cf-body" id="tabBody"></div>`;
+    root.querySelectorAll('.cf-tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; render(); });
+    const body=document.getElementById('tabBody');
+    if(tab==='dashboard') renderDashboard(body);
+    else if(tab==='cashflow') renderCashflow(body);
+    else if(tab==='transactions') renderTransactions(body);
+    else if(tab==='recurring') renderRecurring(body);
+    else if(tab==='debtinvest') renderDebtInvest(body);
+    else renderSettings(body);
+  }
+
+  function renderDashboard(el){
+    const cf=computeCashflow();
+    const minCash=Math.min(...cf.close), endCash=cf.close[11];
+    const avgNet=cf.net.reduce((a,b)=>a+b,0)/12;
+    const underBuf=cf.close.filter(c=>c<cf.buffer).length;
+    el.innerHTML=`
+      <div class="kpis">
+        <div class="kpi"><div class="k">시작월</div><div class="v">${cf.months[0]}</div></div>
+        <div class="kpi"><div class="k">기초 현금</div><div class="v">${fmt(cf.open[0])}원</div></div>
+        <div class="kpi"><div class="k">12개월 최저 현금</div><div class="v ${minCash<cf.buffer?'neg':''}">${fmt(minCash)}원</div></div>
+        <div class="kpi"><div class="k">12개월 말 현금</div><div class="v">${fmt(endCash)}원</div></div>
+        <div class="kpi"><div class="k">월평균 순현금흐름</div><div class="v ${avgNet<0?'neg':'pos'}">${fmt(avgNet)}원</div></div>
+        <div class="kpi"><div class="k">버퍼 미달 월수</div><div class="v ${underBuf>0?'neg':''}">${underBuf} 개월</div></div>
+      </div>
+      <div class="cf-card"><h2>월별 순현금흐름 · 기말현금 추이</h2>
+        <p class="cf-note">막대: 월 순현금흐름 / 선: 기말 현금 / 점선: 최소 운영 현금 버퍼</p>
+        <div class="chart-wrap">${chartSvg(cf)}</div>
+      </div>
+      <div class="cf-card"><h2>월별 현금 잔액 요약</h2>
+        <div class="tbl-wrap"><table class="cf">
+          <tr><th>월</th><th class="num">기초현금</th><th class="num">수입</th><th class="num">지출</th>
+              <th class="num">투자/재무</th><th class="num">순현금흐름</th><th class="num">기말현금</th><th>버퍼상태</th></tr>
+          ${cf.months.map((m,i)=>`<tr>
+            <td>${m}</td><td class="num">${fmt(cf.open[i])}</td>
+            <td class="${cls(cf.incSum[i])}">${fmt(cf.incSum[i])}</td>
+            <td class="${cls(cf.expSum[i])}">${fmt(cf.expSum[i])}</td>
+            <td class="${cls(cf.invSum[i]+cf.finSum[i])}">${fmt(cf.invSum[i]+cf.finSum[i])}</td>
+            <td class="${cls(cf.net[i])}">${fmt(cf.net[i])}</td>
+            <td class="num" style="font-weight:700">${fmt(cf.close[i])}</td>
+            <td>${cf.close[i]>=cf.buffer?'<span class="badge b-ok">정상</span>':'<span class="badge b-warn">위험</span>'}</td>
+          </tr>`).join('')}
+        </table></div>
+      </div>`;
+  }
+
+  function chartSvg(cf){
+    const W=980,H=280,pad={l:70,r:70,t:16,b:34};
+    const iw=(W-pad.l-pad.r)/12;
+    const allVals=cf.net.concat(cf.close,[cf.buffer,0]);
+    const mx=Math.max(...allVals), mn=Math.min(...allVals);
+    const span=(mx-mn)||1;
+    const y=v=>pad.t+(mx-v)/span*(H-pad.t-pad.b);
+    let bars='',line='',pts='',labels='';
+    cf.months.forEach((m,i)=>{
+      const x=pad.l+i*iw;
+      const h=Math.abs(y(cf.net[i])-y(0));
+      bars+=`<rect x="${x+iw*0.18}" y="${Math.min(y(cf.net[i]),y(0))}" width="${iw*0.42}" height="${Math.max(h,1)}"
+        fill="${cf.net[i]>=0?'#0E8A5F':'#D64545'}" opacity="0.75" rx="2"></rect>`;
+      const cx=x+iw*0.5, cy=y(cf.close[i]);
+      line+=(i?'L':'M')+cx+' '+cy+' ';
+      pts+=`<circle cx="${cx}" cy="${cy}" r="3.2" fill="#2B5FAD"></circle>`;
+      labels+=`<text x="${cx}" y="${H-10}" font-size="10" fill="#4A5A72" text-anchor="middle">${m.slice(2)}</text>`;
+    });
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:720px" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="현금흐름 차트">
+      <line x1="${pad.l}" x2="${W-pad.r}" y1="${y(0)}" y2="${y(0)}" stroke="#C9D2DF"></line>
+      <line x1="${pad.l}" x2="${W-pad.r}" y1="${y(cf.buffer)}" y2="${y(cf.buffer)}" stroke="#D64545" stroke-dasharray="5 4" opacity="0.6"></line>
+      <text x="${W-pad.r+4}" y="${y(cf.buffer)+4}" font-size="10" fill="#D64545">버퍼</text>
+      ${bars}<path d="${line}" fill="none" stroke="#2B5FAD" stroke-width="2.2"></path>${pts}${labels}
+      <text x="${pad.l-6}" y="${y(mx)+8}" font-size="10" fill="#4A5A72" text-anchor="end">${fmt(mx)}</text>
+      <text x="${pad.l-6}" y="${y(0)+4}" font-size="10" fill="#4A5A72" text-anchor="end">0</text>
+    </svg>`;
+  }
+
+  function renderCashflow(el){
+    const cf=computeCashflow();
+    const row=(label,arr,klass)=>{
+      const total=arr.reduce((a,b)=>a+b,0);
+      return `<tr class="${klass||''}"><td class="sticky-col">${label}</td>
+        ${arr.map(v=>`<td class="${cls(v)}">${v?fmt(v):'0'}</td>`).join('')}
+        <td class="${cls(total)}" style="font-weight:700">${fmt(total)}</td></tr>`;
+    };
+    const secHead=t=>`<tr class="row-sec"><td class="sticky-col">${t}</td>${cf.months.map(()=>'<td></td>').join('')}<td></td></tr>`;
+    const bufRow=cf.months.map(()=>cf.buffer);
+    const over=cf.close.map(c=>c-cf.buffer);
+    el.innerHTML=`
+      <div class="cf-card">
+        <h2>Cashflow — 월별 현금흐름 12개월 전망</h2>
+        <p class="cf-note">Transactions, Recurring, DebtInvest 데이터의 예정일·상태를 기준으로 자동 집계됩니다. 상태가 '보류'(Recurring은 '중지')인 항목은 제외됩니다.</p>
+        <div class="tbl-wrap" style="max-height:72vh; overflow:auto;">
+        <table class="cf">
+          <tr><th class="sticky-col" style="z-index:2">구분</th>${cf.months.map(m=>`<th class="num">${m}</th>`).join('')}<th class="num">합계</th></tr>
+          ${row('기초 현금',cf.open,'row-sum')}
+          ${secHead('영업 현금유입')}
+          ${INCOME_CATS.map(c=>row(c,cf.inc[c])).join('')}
+          ${row('영업 현금유입 합계',cf.incSum,'row-sum')}
+          ${secHead('영업 현금유출')}
+          ${EXPENSE_CATS.map(c=>row(c,cf.exp[c])).join('')}
+          ${row('영업 현금유출 합계',cf.expSum,'row-sum')}
+          ${secHead('투자 현금흐름')}
+          ${INVEST_CATS.map(c=>row(c,cf.inv[c])).join('')}
+          ${row('투자 현금흐름 합계',cf.invSum,'row-sum')}
+          ${secHead('재무 현금흐름')}
+          ${FINANCE_CATS.map(c=>row(c,cf.fin[c])).join('')}
+          ${row('재무 현금흐름 합계',cf.finSum,'row-sum')}
+          ${row('월 순현금흐름',cf.net,'row-sum')}
+          ${row('기말 현금',cf.close,'row-final')}
+          ${row('최소 운영 현금 버퍼',bufRow)}
+          ${row('버퍼 초과/(부족)',over,'row-sum')}
+        </table></div>
+      </div>`;
+  }
+
+  // ----- Transactions -----
+  function renderTransactions(el){
+    const ed=editId.transactions ? db.transactions.find(t=>t.id===editId.transactions) : null;
+    const months=[''].concat(monthList());
+    const list=db.transactions
+      .filter(t=>(!txFilter.month||ym(t.actual||t.date)===txFilter.month)
+        &&(!txFilter.type||t.type===txFilter.type)
+        &&(!txFilter.status||t.status===txFilter.status)
+        &&(!txFilter.text||((t.item||'')+(t.party||'')+(t.memo||'')).includes(txFilter.text)))
+      .slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    el.innerHTML=`
+      <div class="cf-card">
+        <h2>${ed?'거래 수정':'거래 입력'} <span class="file-tag">${FILES.transactions}</span></h2>
+        <p class="cf-note">금액은 수입/지출 모두 양수로 입력하세요. 총액은 공급가+부가세 자동계산이며, 상태가 '보류'인 거래는 Cashflow에서 제외됩니다.</p>
+        <div class="form-grid">
+          ${f('date','입출금 예정일','date',ed?ed.date:'')}
+          ${f('actual','실제일','date',ed?ed.actual:'')}
+          ${sel('type','구분',['수입','지출'],ed?ed.type:'지출')}
+          ${sel('cat','대분류',INCOME_CATS.concat(EXPENSE_CATS),ed?ed.cat:'일반관리비')}
+          ${f('item','세부항목','text',ed?ed.item:'')}
+          ${f('party','거래처','text',ed?ed.party:'')}
+          ${f('supply','공급가(원)','number',ed?ed.supply:'')}
+          ${f('vat','부가세(원)','number',ed?ed.vat:'')}
+          <div class="fld"><label>총액(원)</label><input id="fx_total" readonly value=""></div>
+          ${sel('status','상태',['예정','확정','완료','보류'],ed?ed.status:'예정')}
+          ${sel('pay','결제수단',['계좌이체','카드','현금','기타'],ed?ed.pay:'계좌이체')}
+          ${f('memo','메모','text',ed?ed.memo:'')}
+        </div>
+        <div class="btns">
+          <button class="btn btn-p" id="txSave">${ed?'수정 저장':'거래 추가'}</button>
+          ${ed?'<button class="btn btn-g" id="txCancel">취소</button>':''}
+          <button class="btn btn-g" id="vat10">부가세 10% 자동</button>
+        </div>
+      </div>
+      <div class="cf-card">
+        <h2>거래 조회 (${list.length}건)</h2>
+        <div class="toolbar">
+          <select id="ftMonth">${months.map(m=>`<option value="${m}" ${txFilter.month===m?'selected':''}>${m||'전체 월'}</option>`).join('')}</select>
+          <select id="ftType"><option value="">수입/지출</option>${['수입','지출'].map(v=>`<option ${txFilter.type===v?'selected':''}>${v}</option>`).join('')}</select>
+          <select id="ftStatus"><option value="">전체 상태</option>${['예정','확정','완료','보류'].map(v=>`<option ${txFilter.status===v?'selected':''}>${v}</option>`).join('')}</select>
+          <input id="ftText" placeholder="항목/거래처 검색" value="${esc(txFilter.text)}">
+        </div>
+        <div class="tbl-wrap" style="max-height:60vh;overflow:auto;"><table class="cf">
+          <tr><th>예정일</th><th>실제일</th><th>구분</th><th>대분류</th><th>세부항목</th><th>거래처</th>
+              <th class="num">공급가</th><th class="num">부가세</th><th class="num">총액</th><th>상태</th><th>결제</th><th>메모</th><th></th></tr>
+          ${list.length?list.map(t=>{
+            const total=(Number(t.supply)||0)+(Number(t.vat)||0);
+            return `<tr>
+              <td>${t.date||''}</td><td>${t.actual||''}</td>
+              <td class="${t.type==='수입'?'pos':'neg'}" style="font-weight:700">${t.type}</td>
+              <td>${esc(t.cat)}</td><td>${esc(t.item)}</td><td>${esc(t.party)}</td>
+              <td class="num">${fmt(t.supply)}</td><td class="num">${fmt(t.vat)}</td>
+              <td class="num" style="font-weight:700">${fmt(total)}</td>
+              <td>${statusBadge(t.status)}</td><td>${esc(t.pay)}</td><td>${esc(t.memo)}</td>
+              <td><button class="btn btn-g btn-xs" data-ed="${t.id}">수정</button>
+                  <button class="btn btn-d btn-xs" data-del="${t.id}">삭제</button></td></tr>`;
+          }).join(''):`<tr><td colspan="13" class="empty">거래가 없습니다. 위에서 첫 거래를 추가하세요.</td></tr>`}
+        </table></div>
+      </div>`;
+    const updTotal=()=>{ const s=Number(el.querySelector('#fx_supply').value)||0, v=Number(el.querySelector('#fx_vat').value)||0;
+      el.querySelector('#fx_total').value=(s+v).toLocaleString('ko-KR'); };
+    ['fx_supply','fx_vat'].forEach(id=>el.querySelector('#'+id).oninput=updTotal); updTotal();
+    el.querySelector('#vat10').onclick=()=>{ const s=Number(el.querySelector('#fx_supply').value)||0;
+      el.querySelector('#fx_vat').value=Math.round(s*0.1); updTotal(); };
+    el.querySelector('#txSave').onclick=async()=>{
+      const g=id=>el.querySelector('#fx_'+id).value;
+      if(!g('date')||!g('cat')||!g('supply')){ toast('예정일·대분류·공급가는 필수입니다'); return; }
+      const rec={ id:ed?ed.id:uid(), date:g('date'), actual:g('actual'), type:g('type'), cat:g('cat'),
+        item:g('item'), party:g('party'), supply:Number(g('supply'))||0, vat:Number(g('vat'))||0,
+        status:g('status'), pay:g('pay'), memo:g('memo') };
+      if(ed) db.transactions=db.transactions.map(t=>t.id===ed.id?rec:t); else db.transactions.push(rec);
+      editId.transactions=null; await saveFile('transactions'); toast('저장했습니다'); render();
+    };
+    if(ed) el.querySelector('#txCancel').onclick=()=>{ editId.transactions=null; render(); };
+    ['ftMonth','ftType','ftStatus'].forEach((id,i)=>{ el.querySelector('#'+id).onchange=e=>{
+      txFilter[['month','type','status'][i]]=e.target.value; render(); }; });
+    el.querySelector('#ftText').onchange=e=>{ txFilter.text=e.target.value; render(); };
+    bindRowBtns(el,'transactions');
+  }
+
+  // ----- Recurring -----
+  function renderRecurring(el){
+    const ed=editId.recurring ? db.recurring.find(r=>r.id===editId.recurring) : null;
+    const list=db.recurring.slice().sort((a,b)=>(a.cat||'').localeCompare(b.cat||''));
+    el.innerHTML=`
+      <div class="cf-card">
+        <h2>${ed?'고정비 수정':'고정비·급여 입력'} <span class="file-tag">${FILES.recurring}</span></h2>
+        <p class="cf-note">매월 반복되는 급여, 4대보험, 임차료, 구독료 등을 입력합니다. 시작일~종료일 사이 매월 Cashflow에 자동 반영되며, 상태 '중지'는 제외됩니다.</p>
+        <div class="form-grid">
+          ${sel('cat','대분류',EXPENSE_CATS,ed?ed.cat:'일반관리비')}
+          ${f('name','항목명','text',ed?ed.name:'')}
+          ${f('party','지급처/대상','text',ed?ed.party:'')}
+          ${f('start','시작일','date',ed?ed.start:'')}
+          ${f('end','종료일','date',ed?ed.end:'')}
+          ${f('amount','월금액(원)','number',ed?ed.amount:'')}
+          ${sel('vatIncl','부가세 포함?',['Y','N'],ed?ed.vatIncl:'Y')}
+          ${f('payday','지급일','text',ed?ed.payday:'매월 25일')}
+          ${sel('status','상태',['활성','중지'],ed?ed.status:'활성')}
+          ${f('memo','메모','text',ed?ed.memo:'')}
+        </div>
+        <div class="btns"><button class="btn btn-p" id="rcSave">${ed?'수정 저장':'항목 추가'}</button>
+          ${ed?'<button class="btn btn-g" id="rcCancel">취소</button>':''}</div>
+      </div>
+      <div class="cf-card"><h2>고정비 조회 (${list.length}건)</h2>
+        <div class="tbl-wrap"><table class="cf">
+          <tr><th>대분류</th><th>항목명</th><th>지급처</th><th>시작일</th><th>종료일</th>
+              <th class="num">월금액</th><th>부가세포함</th><th>지급일</th><th>상태</th><th>메모</th><th></th></tr>
+          ${list.length?list.map(r=>`<tr>
+            <td>${esc(r.cat)}</td><td>${esc(r.name)}</td><td>${esc(r.party)}</td>
+            <td>${r.start||''}</td><td>${r.end||''}</td>
+            <td class="num" style="font-weight:700">${fmt(r.amount)}</td>
+            <td>${esc(r.vatIncl)}</td><td>${esc(r.payday)}</td>
+            <td>${r.status==='활성'?'<span class="badge b-ok">활성</span>':'<span class="badge b-hold">중지</span>'}</td>
+            <td>${esc(r.memo)}</td>
+            <td><button class="btn btn-g btn-xs" data-ed="${r.id}">수정</button>
+                <button class="btn btn-d btn-xs" data-del="${r.id}">삭제</button></td></tr>`).join('')
+          :`<tr><td colspan="11" class="empty">고정비 항목이 없습니다.</td></tr>`}
+        </table></div>
+      </div>`;
+    el.querySelector('#rcSave').onclick=async()=>{
+      const g=id=>el.querySelector('#fx_'+id).value;
+      if(!g('name')||!g('start')||!g('amount')){ toast('항목명·시작일·월금액은 필수입니다'); return; }
+      const rec={ id:ed?ed.id:uid(), cat:g('cat'), name:g('name'), party:g('party'),
+        start:g('start'), end:g('end'), amount:Number(g('amount'))||0, vatIncl:g('vatIncl'),
+        payday:g('payday'), status:g('status'), memo:g('memo') };
+      if(ed) db.recurring=db.recurring.map(r=>r.id===ed.id?rec:r); else db.recurring.push(rec);
+      editId.recurring=null; await saveFile('recurring'); toast('저장했습니다'); render();
+    };
+    if(ed) el.querySelector('#rcCancel').onclick=()=>{ editId.recurring=null; render(); };
+    bindRowBtns(el,'recurring');
+  }
+
+  // ----- DebtInvest -----
+  function renderDebtInvest(el){
+    const ed=editId.debtinvest ? db.debtinvest.find(d=>d.id===editId.debtinvest) : null;
+    const list=db.debtinvest.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    el.innerHTML=`
+      <div class="cf-card">
+        <h2>${ed?'항목 수정':'부채·투자·자본 입력'} <span class="file-tag">${FILES.debtinvest}</span></h2>
+        <p class="cf-note">대출 실행, 원금 상환, 이자 지급, CapEx, 보증금, 증자/출자 등을 입력합니다. '대출 실행'과 '증자/출자'는 현금 유입, 나머지는 유출로 집계되며, '보류'는 제외됩니다.</p>
+        <div class="form-grid">
+          ${f('date','예정일','date',ed?ed.date:'')}
+          ${sel('cat','구분',DI_CATS,ed?ed.cat:'투자/보증금')}
+          ${f('item','세부항목','text',ed?ed.item:'')}
+          ${f('party','거래처/기관','text',ed?ed.party:'')}
+          ${f('amount','금액(원)','number',ed?ed.amount:'')}
+          ${sel('status','상태',['예정','확정','완료','보류'],ed?ed.status:'예정')}
+          ${f('asset','관련 자산/대출','text',ed?ed.asset:'')}
+          ${f('proof','증빙','text',ed?ed.proof:'')}
+          ${f('memo','메모','text',ed?ed.memo:'')}
+        </div>
+        <div class="btns"><button class="btn btn-p" id="diSave">${ed?'수정 저장':'항목 추가'}</button>
+          ${ed?'<button class="btn btn-g" id="diCancel">취소</button>':''}</div>
+      </div>
+      <div class="cf-card"><h2>부채·투자 조회 (${list.length}건)</h2>
+        <div class="tbl-wrap"><table class="cf">
+          <tr><th>예정일</th><th>구분</th><th>세부항목</th><th>거래처/기관</th><th class="num">금액</th>
+              <th>상태</th><th>관련 자산/대출</th><th>증빙</th><th>메모</th><th></th></tr>
+          ${list.length?list.map(d=>`<tr>
+            <td>${d.date||''}</td>
+            <td class="${DI_INFLOW[d.cat]?'pos':'neg'}" style="font-weight:700">${esc(d.cat)}</td>
+            <td>${esc(d.item)}</td><td>${esc(d.party)}</td>
+            <td class="num" style="font-weight:700">${fmt(d.amount)}</td>
+            <td>${statusBadge(d.status)}</td><td>${esc(d.asset)}</td><td>${esc(d.proof)}</td><td>${esc(d.memo)}</td>
+            <td><button class="btn btn-g btn-xs" data-ed="${d.id}">수정</button>
+                <button class="btn btn-d btn-xs" data-del="${d.id}">삭제</button></td></tr>`).join('')
+          :`<tr><td colspan="10" class="empty">항목이 없습니다.</td></tr>`}
+        </table></div>
+      </div>`;
+    el.querySelector('#diSave').onclick=async()=>{
+      const g=id=>el.querySelector('#fx_'+id).value;
+      if(!g('date')||!g('amount')){ toast('예정일·금액은 필수입니다'); return; }
+      const rec={ id:ed?ed.id:uid(), date:g('date'), cat:g('cat'), item:g('item'), party:g('party'),
+        amount:Number(g('amount'))||0, status:g('status'), asset:g('asset'), proof:g('proof'), memo:g('memo') };
+      if(ed) db.debtinvest=db.debtinvest.map(d=>d.id===ed.id?rec:d); else db.debtinvest.push(rec);
+      editId.debtinvest=null; await saveFile('debtinvest'); toast('저장했습니다'); render();
+    };
+    if(ed) el.querySelector('#diCancel').onclick=()=>{ editId.debtinvest=null; render(); };
+    bindRowBtns(el,'debtinvest');
+  }
+
+  // ----- Settings -----
+  function renderSettings(el){
+    const s=db.settings;
+    el.innerHTML=`
+      <div class="cf-card">
+        <h2>Settings <span class="file-tag">${FILES.settings}</span></h2>
+        <p class="cf-note">시작월과 기초 현금을 기준으로 12개월 Cashflow가 계산됩니다.</p>
+        <div class="form-grid">
+          <div class="fld"><label>시작월 (월별 Cashflow의 첫 번째 월)</label><input id="st_startMonth" type="month" value="${esc(s.startMonth)}"></div>
+          <div class="fld"><label>기초 현금 (원) — 필수</label><input id="st_openingCash" type="number" value="${esc(s.openingCash)}"></div>
+          <div class="fld"><label>최소 운영 현금 버퍼 (원) — 미달 시 위험 표시</label><input id="st_minBuffer" type="number" value="${esc(s.minBuffer)}"></div>
+          <div class="fld"><label>세금 납부 메모</label><input id="st_taxMemo" type="text" value="${esc(s.taxMemo)}"></div>
+          <div class="fld"><label>작성 기준</label><input id="st_basis" type="text" value="${esc(s.basis)}"></div>
+        </div>
+        <div class="btns"><button class="btn btn-p" id="stSave">설정 저장</button></div>
+      </div>
+      <div class="cf-card">
+        <h2>데이터 파일 관리</h2>
+        <p class="cf-note">각 시트는 별도 파일로 저장·관리됩니다. JSON으로 내려받아 백업하거나, 백업 파일을 불러올 수 있습니다.</p>
+        <div class="btns" style="margin-bottom:10px">
+          ${Object.keys(FILES).map(k=>`<button class="btn btn-g" data-exp="${k}">↓ ${FILES[k]}</button>`).join('')}
+          <button class="btn btn-g" id="expAll">↓ 전체 백업</button>
+        </div>
+        <div class="btns">
+          <label class="btn btn-g" style="display:inline-block">백업 불러오기<input type="file" id="impFile" accept=".json" style="display:none"></label>
+          <button class="btn btn-d" id="resetAll">전체 초기화(샘플 데이터로)</button>
+        </div>
+      </div>`;
+    el.querySelector('#stSave').onclick=async()=>{
+      db.settings={ startMonth:el.querySelector('#st_startMonth').value||'2026-08',
+        openingCash:Number(el.querySelector('#st_openingCash').value)||0,
+        minBuffer:Number(el.querySelector('#st_minBuffer').value)||0,
+        taxMemo:el.querySelector('#st_taxMemo').value, basis:el.querySelector('#st_basis').value };
+      await saveFile('settings'); toast('설정을 저장했습니다'); render();
+    };
+    el.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>downloadJson(FILES[b.dataset.exp], db[b.dataset.exp]));
+    el.querySelector('#expAll').onclick=()=>downloadJson('cashflow_backup_all.json', db);
+    el.querySelector('#impFile').onchange=async e=>{
+      const file=e.target.files[0]; if(!file) return;
+      try{
+        const data=JSON.parse(await file.text());
+        if(data.settings&&data.transactions){ db=data; }
+        else if(Array.isArray(data)){ toast('전체 백업 파일 또는 개별 파일 구조가 필요합니다'); return; }
+        else if(data.startMonth!==undefined){ db.settings=data; }
+        for(const k of Object.keys(FILES)) await saveFile(k);
+        toast('불러오기 완료'); render();
+      }catch(err){ toast('파일을 읽을 수 없습니다'); }
+    };
+    el.querySelector('#resetAll').onclick=async()=>{
+      if(!confirm('모든 데이터를 삭제하고 샘플 데이터로 초기화할까요?')) return;
+      db=JSON.parse(JSON.stringify(SEED));
+      for(const k of Object.keys(FILES)) await saveFile(k);
+      toast('초기화했습니다'); render();
+    };
+  }
+
+  // ----- 공통 헬퍼 -----
+  function f(id,label,type,val){ return `<div class="fld"><label>${label}</label><input id="fx_${id}" type="${type}" value="${esc(val)}"></div>`; }
+  function sel(id,label,opts,val){ return `<div class="fld"><label>${label}</label><select id="fx_${id}">
+    ${opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('')}</select></div>`; }
+  function statusBadge(s){
+    if(s==='보류') return '<span class="badge b-hold">보류</span>';
+    if(s==='확정') return '<span class="badge b-ok">확정</span>';
+    if(s==='완료') return '<span class="badge b-done">완료</span>';
+    return '<span class="badge b-plan">예정</span>';
+  }
+  function bindRowBtns(el,key){
+    el.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{ editId[key]=b.dataset.ed; render(); window.scrollTo({top:0,behavior:'smooth'}); });
+    el.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('이 항목을 삭제할까요?')) return;
+      db[key]=db[key].filter(r=>r.id!==b.dataset.del);
+      await saveFile(key); toast('삭제했습니다'); render();
+    });
+  }
+  function downloadJson(name,obj){
+    const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ===== 시작 =====
+  (async function init(){
+    root.innerHTML='<div class="empty">데이터를 불러오는 중…</div>';
+    db.settings    = await loadFile('settings', null);
+    db.transactions= await loadFile('transactions', null);
+    db.recurring   = await loadFile('recurring', null);
+    db.debtinvest  = await loadFile('debtinvest', null);
+    let seeded=false;
+    if(!db.settings){ db.settings=JSON.parse(JSON.stringify(SEED.settings)); seeded=true; }
+    if(!db.transactions){ db.transactions=JSON.parse(JSON.stringify(SEED.transactions)); seeded=true; }
+    if(!db.recurring){ db.recurring=JSON.parse(JSON.stringify(SEED.recurring)); seeded=true; }
+    if(!db.debtinvest){ db.debtinvest=JSON.parse(JSON.stringify(SEED.debtinvest)); seeded=true; }
+    if(seeded) for(const k of Object.keys(FILES)) await saveFile(k);
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
