@@ -98,34 +98,10 @@
   let txFilter = { month:'', type:'', status:'', text:'' };
 
   const SEED = {
-    settings: { startMonth:'2026-08', openingCash:1000000, minBuffer:10000000,
-      taxMemo:'예: 1,4,7,10월 부가세 / 3월 법인세', basis:'현금주의' },
-    transactions: [
-      {id:uid(),date:'2026-08-01',actual:'',type:'수입',cat:'매출 수금',item:'AX 선수금',party:'엠로',supply:42000000,vat:4200000,status:'예정',pay:'계좌이체',memo:''},
-      {id:uid(),date:'2026-08-15',actual:'',type:'지출',cat:'일반관리비',item:'핸드폰 구입',party:'애플',supply:1380909,vat:138090.9,status:'예정',pay:'카드',memo:''},
-      {id:uid(),date:'2026-08-25',actual:'',type:'지출',cat:'일반관리비',item:'법인설립비용',party:'자비스',supply:368000,vat:36800,status:'예정',pay:'계좌이체',memo:''},
-      {id:uid(),date:'2026-10-25',actual:'',type:'지출',cat:'세금/부가세',item:'3분기 부가가치세',party:'세무서',supply:4000000,vat:0,status:'예정',pay:'계좌이체',memo:''},
-      {id:uid(),date:'2026-12-31',actual:'',type:'수입',cat:'매출 수금',item:'AX 중도금',party:'엠로',supply:56000000,vat:5600000,status:'예정',pay:'계좌이체',memo:''},
-      {id:uid(),date:'2027-03-31',actual:'',type:'지출',cat:'세금/부가세',item:'2026 법인세',party:'세무서',supply:9800000,vat:980000,status:'예정',pay:'계좌이체',memo:''},
-      {id:uid(),date:'2027-05-31',actual:'',type:'수입',cat:'매출 수금',item:'AX 잔금',party:'엠로',supply:42000000,vat:4200000,status:'예정',pay:'계좌이체',memo:''}
-    ],
-    recurring: [
-      {id:uid(),cat:'급여/4대보험',name:'임직원 급여',party:'임직원',start:'2026-01-01',end:'2026-12-31',amount:1000000,vatIncl:'N',payday:'매월 25일',status:'중지',memo:''},
-      {id:uid(),cat:'일반관리비',name:'차량 리스',party:'임대인',start:'2026-08-01',end:'2030-07-31',amount:748600,vatIncl:'Y',payday:'매월 말일',status:'중지',memo:'M3 Long : 748,600 / Y : 616,900'},
-      {id:uid(),cat:'일반관리비',name:'Claude 사용료',party:'Anthropic',start:'2026-08-25',end:'2027-12-31',amount:30400,vatIncl:'N',payday:'매월 10일',status:'활성',memo:''},
-      {id:uid(),cat:'일반관리비',name:'세무비용',party:'자비스',start:'2026-08-25',end:'2027-12-31',amount:88000,vatIncl:'Y',payday:'매월 25일',status:'활성',memo:''}
-    ],
-    debtinvest: [
-      {id:uid(),date:'2026-03-15',cat:'대출 실행',item:'운전자금 대출',party:'은행',amount:50000000,status:'보류',asset:'대출A',proof:'',memo:'예시'},
-      {id:uid(),date:'2026-04-30',cat:'CapEx/자산구입',item:'장비 구입',party:'공급사',amount:20000000,status:'보류',asset:'장비A',proof:'',memo:'예시'},
-      {id:uid(),date:'2026-06-30',cat:'원금 상환',item:'대출A 원금',party:'은행',amount:10000000,status:'보류',asset:'대출A',proof:'',memo:'예시'},
-      {id:uid(),date:'2026-06-30',cat:'이자 지급',item:'대출A 이자',party:'은행',amount:1200000,status:'보류',asset:'대출A',proof:'',memo:'예시'},
-      {id:uid(),date:'2026-08-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
-      {id:uid(),date:'2026-09-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
-      {id:uid(),date:'2026-10-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
-      {id:uid(),date:'2026-11-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''},
-      {id:uid(),date:'2026-12-25',cat:'투자/보증금',item:'주식투자',party:'삼성증권',amount:5000000,status:'확정',asset:'QQQ',proof:'',memo:''}
-    ]
+    settings: { startMonth:'2026-08', openingCash:0, minBuffer:0, taxMemo:'', basis:'현금주의' },
+    transactions: [],
+    recurring: [],
+    debtinvest: []
   };
 
   function uid(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -585,7 +561,7 @@
         </div>
         <div class="btns">
           <label class="btn btn-g" style="display:inline-block">백업 불러오기<input type="file" id="impFile" accept=".json" style="display:none"></label>
-          <button class="btn btn-d" id="resetAll">전체 초기화(샘플 데이터로)</button>
+          <button class="btn btn-d" id="resetAll">전체 초기화(데이터 완전 삭제)</button>
         </div>
       </div>`;
     el.querySelector('#stSave').onclick=async()=>{
@@ -642,10 +618,11 @@
       }catch(err){ toast('파일을 읽을 수 없습니다'); }
     };
     el.querySelector('#resetAll').onclick=async()=>{
-      if(!confirm('모든 데이터를 삭제하고 샘플 데이터로 초기화할까요?')) return;
-      db=JSON.parse(JSON.stringify(SEED));
+      if(!confirm('모든 데이터를 완전히 삭제하고 빈 상태로 초기화할까요?\n(샘플 데이터도 다시 생성되지 않습니다)')) return;
+      db.settings={ startMonth:(db.settings&&db.settings.startMonth)||'2026-08', openingCash:0, minBuffer:0, taxMemo:'', basis:'현금주의' };
+      db.transactions=[]; db.recurring=[]; db.debtinvest=[];
       for(const k of Object.keys(FILES)) await saveFile(k);
-      toast('초기화했습니다'); render();
+      toast('빈 상태로 초기화했습니다'); render();
     };
   }
 
