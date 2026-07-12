@@ -674,7 +674,7 @@
   }
 
   // ===== 시작 =====
-  (async function init(){
+  async function init(){
     root.innerHTML='<div class="empty">데이터를 불러오는 중…</div>';
     db.settings    = loadLocal('settings', null);
     db.transactions= loadLocal('transactions', null);
@@ -694,6 +694,59 @@
       }catch(e){ syncState='err'; toast('시트 연결 실패 — 로컬 데이터를 표시합니다'); }
     }
     render();
+  }
+
+  // ===== 비밀번호 잠금 =====
+  // 비밀번호는 아래 PASS_HASH(SHA-256)와 비교합니다. 평문은 코드에 없습니다.
+  // 비밀번호 변경: 새 비번을 정한 뒤 브라우저 콘솔에서
+  //   crypto.subtle.digest('SHA-256', new TextEncoder().encode('새비번'))
+  //     .then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+  // 로 나온 해시 문자열을 PASS_HASH 값에 붙여넣으세요.
+  const PASS_HASH='779aa45dc60f0d4031e86d1327d6cd26ff9db1358df7b9e840714ff327623574';
+  const GATE_KEY='cashflow_gate_ok';
+  async function sha256(str){
+    const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }
+  function showGate(){
+    root.innerHTML=`
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--paper);padding:20px">
+        <div class="cf-card" style="max-width:340px;width:100%;text-align:center">
+          <div style="width:44px;height:44px;border-radius:12px;background:var(--ink);color:#fff;font-size:22px;
+            display:flex;align-items:center;justify-content:center;margin:4px auto 12px">₩</div>
+          <h2 style="justify-content:center">법인 운영 Cashflow</h2>
+          <p class="cf-note" style="text-align:center">비밀번호를 입력하세요.</p>
+          <div class="fld" style="margin-bottom:10px">
+            <input id="gatePw" type="password" placeholder="비밀번호" autofocus
+              style="width:100%;text-align:center;font-size:15px;padding:9px">
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;justify-content:center;font-size:12px;color:var(--ink2);margin-bottom:12px">
+            <input type="checkbox" id="gateRemember" checked> 이 기기에서 다음부터 묻지 않기</label>
+          <button class="btn btn-p" id="gateBtn" style="width:100%">들어가기</button>
+          <p id="gateErr" style="color:var(--out);font-size:12.5px;margin:10px 0 0;min-height:16px"></p>
+        </div>
+      </div>`;
+    const pw=document.getElementById('gatePw');
+    const err=document.getElementById('gateErr');
+    const submit=async()=>{
+      const h=await sha256(pw.value);
+      if(h===PASS_HASH){
+        if(document.getElementById('gateRemember').checked){ try{ sessionStorage.setItem(GATE_KEY,'1'); localStorage.setItem(GATE_KEY,h); }catch(e){} }
+        else { try{ sessionStorage.setItem(GATE_KEY,'1'); }catch(e){} }
+        init();
+      } else { err.textContent='비밀번호가 올바르지 않습니다.'; pw.value=''; pw.focus(); }
+    };
+    document.getElementById('gateBtn').onclick=submit;
+    pw.onkeydown=e=>{ if(e.key==='Enter') submit(); };
+  }
+
+  // 게이트 판단: 해시가 기본 플레이스홀더면 잠금 없이 통과(설정 전),
+  // 이미 이 기기에서 인증했으면 통과, 아니면 입력창 표시.
+  (function boot(){
+    let remembered=false;
+    try{ remembered = sessionStorage.getItem(GATE_KEY)==='1' || localStorage.getItem(GATE_KEY)===PASS_HASH; }catch(e){}
+    if(PASS_HASH==='__PASS_HASH__' || remembered) init();
+    else showGate();
   })();
 })();
 </script>
