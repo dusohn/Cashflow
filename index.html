@@ -270,7 +270,7 @@
     const avgNet=cf.net.reduce((a,b)=>a+b,0)/12;
     const underBuf=cf.close.filter(c=>c<cf.buffer).length;
     el.innerHTML=`
-      <div class="kpis">
+      <div class="kpis" style="text-align:center">
         <div class="kpi"><div class="k">시작월</div><div class="v">${cf.months[0]}</div></div>
         <div class="kpi"><div class="k">기초 현금</div><div class="v">${fmt(cf.open[0])}원</div></div>
         <div class="kpi"><div class="k">12개월 최저 현금</div><div class="v ${minCash<cf.buffer?'neg':''}">${fmt(minCash)}원</div></div>
