@@ -344,7 +344,7 @@
         <p class="cf-note">Transactions, Recurring, DebtInvest 데이터의 예정일·상태를 기준으로 자동 집계됩니다. 상태가 '보류'(Recurring은 '중지')인 항목은 제외됩니다.</p>
         <div class="tbl-wrap" style="max-height:72vh; overflow:auto;">
         <table class="cf">
-          <tr><th class="sticky-col" style="z-index:2">구분</th>${cf.months.map(m=>`<th class="num" style="text-align:right">${m}</th>`).join('')}<th class="num" style="text-align:center">합계</th></tr>
+          <tr><th class="sticky-col" style="z-index:2">구분</th>${cf.months.map(m=>`<th class="num" style="text-align:center">${m}</th>`).join('')}<th class="num" style="text-align:center">합계</th></tr>
           ${row('기초 현금',cf.open,'row-sum')}
           ${secHead('영업 현금유입')}
           ${INCOME_CATS.map(c=>row(c,cf.inc[c])).join('')}
