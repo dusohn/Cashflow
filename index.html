@@ -284,8 +284,8 @@
       </div>
       <div class="cf-card"><h2>월별 현금 잔액 요약</h2>
         <div class="tbl-wrap"><table class="cf">
-          <tr><th>월</th><th class="num">기초현금</th><th class="num">수입</th><th class="num">지출</th>
-              <th class="num">투자/재무</th><th class="num">순현금흐름</th><th class="num">기말현금</th><th>버퍼상태</th></tr>
+          <tr><th>월</th><th class="num" style="text-align:right">기초현금</th><th class="num" style="text-align:right">수입</th><th class="num" style="text-align:right">지출</th>
+              <th class="num" style="text-align:right">투자/재무</th><th class="num" style="text-align:right">순현금흐름</th><th class="num" style="text-align:right">기말현금</th><th style="text-align:center">버퍼상태</th></tr>
           ${cf.months.map((m,i)=>`<tr>
             <td>${m}</td><td class="num">${fmt(cf.open[i])}</td>
             <td class="${cls(cf.incSum[i])}">${fmt(cf.incSum[i])}</td>
