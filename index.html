@@ -409,8 +409,8 @@
           <input id="ftText" placeholder="항목/거래처 검색" value="${esc(txFilter.text)}">
         </div>
         <div class="tbl-wrap" style="max-height:60vh;overflow:auto;"><table class="cf">
-          <tr style="text-align:center"><th>예정일</th><th>실제일</th><th>구분</th><th>대분류</th><th>세부항목</th><th>거래처</th>
-              <th class="num">공급가</th><th class="num">부가세</th><th class="num">총액</th><th>상태</th><th>결제</th><th>메모</th><th></th></tr>
+          <tr><th style="text-align:center">예정일</th><th style="text-align:center">실제일</th><th style="text-align:center">구분</th><th style="text-align:center">대분류</th><th style="text-align:center">세부항목</th><th style="text-align:center">거래처</th>
+              <th class="num" style="text-align:center">공급가</th><th class="num" style="text-align:center">부가세</th><th class="num" style="text-align:center">총액</th><th style="text-align:center">상태</th><th style="text-align:center">결제</th><th style="text-align:center">메모</th><th></th></tr>
           ${list.length?list.map(t=>{
             const total=(Number(t.supply)||0)+(Number(t.vat)||0);
             return `<tr>
