@@ -284,16 +284,16 @@
       </div>
       <div class="cf-card"><h2>월별 현금 잔액 요약</h2>
         <div class="tbl-wrap"><table class="cf">
-          <tr><th>월</th><th class="num" style="text-align:right">기초현금</th><th class="num" style="text-align:right">수입</th><th class="num" style="text-align:right">지출</th>
+          <tr><th style="text-align:center">월</th><th class="num" style="text-align:right">기초현금</th><th class="num" style="text-align:right">수입</th><th class="num" style="text-align:right">지출</th>
               <th class="num" style="text-align:right">투자/재무</th><th class="num" style="text-align:right">순현금흐름</th><th class="num" style="text-align:right">기말현금</th><th style="text-align:center">버퍼상태</th></tr>
           ${cf.months.map((m,i)=>`<tr>
-            <td>${m}</td><td class="num">${fmt(cf.open[i])}</td>
+            <td style="text-align:center">${m}</td><td class="num">${fmt(cf.open[i])}</td>
             <td class="${cls(cf.incSum[i])}">${fmt(cf.incSum[i])}</td>
             <td class="${cls(cf.expSum[i])}">${fmt(cf.expSum[i])}</td>
             <td class="${cls(cf.invSum[i]+cf.finSum[i])}">${fmt(cf.invSum[i]+cf.finSum[i])}</td>
             <td class="${cls(cf.net[i])}">${fmt(cf.net[i])}</td>
             <td class="num" style="font-weight:700">${fmt(cf.close[i])}</td>
-            <td>${cf.close[i]>=cf.buffer?'<span class="badge b-ok">정상</span>':'<span class="badge b-warn">위험</span>'}</td>
+            <td style="text-align:center">${cf.close[i]>=cf.buffer?'<span class="badge b-ok">정상</span>':'<span class="badge b-warn">위험</span>'}</td>
           </tr>`).join('')}
         </table></div>
       </div>`;
